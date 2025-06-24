@@ -14,11 +14,13 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AddReminderModal from '@/components/AddReminderModal';
 
 export default function RemindersScreen() {
   const { isDark } = useTheme();
   const colors = isDark ? Colors.dark : Colors.light;
   const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const loadReminders = () => {
     try {
@@ -42,7 +44,6 @@ export default function RemindersScreen() {
       Alert.alert('Error', 'Failed to update reminder');
     }
   };
-
   const handleDeleteReminder = (id: string) => {
     Alert.alert(
       'Delete Reminder',
@@ -64,6 +65,17 @@ export default function RemindersScreen() {
         },
       ]
     );
+  };
+
+  const handleAddReminder = (reminderData: { time: string; label: string; active: boolean }) => {
+    try {
+      databaseService.addReminder(reminderData);
+      loadReminders();
+      setShowAddModal(false);
+    } catch (error) {
+      console.error('Error adding reminder:', error);
+      Alert.alert('Error', 'Failed to add reminder');
+    }
   };
 
   const styles = StyleSheet.create({
@@ -135,15 +147,32 @@ export default function RemindersScreen() {
     emptyState: {
       alignItems: 'center',
       marginTop: 48,
-    },
-    emptyText: {
+    },    emptyText: {
       fontSize: 16,
       color: colors.textSecondary,
       textAlign: 'center',
       marginTop: 16,
     },
+    fab: {
+      position: 'absolute',
+      right: 20,
+      bottom: 20,
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: colors.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 4,
+      },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 8,
+    },
   });
-
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -189,6 +218,19 @@ export default function RemindersScreen() {
           ))
         )}
       </ScrollView>
+      
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => setShowAddModal(true)}
+      >
+        <Ionicons name="add" size={24} color={colors.primaryForeground} />
+      </TouchableOpacity>
+
+      <AddReminderModal
+        visible={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onAddReminder={handleAddReminder}
+      />
     </SafeAreaView>
   );
 }

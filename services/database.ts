@@ -246,9 +246,20 @@ class DatabaseService {
       [active ? 1 : 0, now, id]
     );
   }
-
   deleteReminder(id: string): void {
     this.db.runSync('DELETE FROM reminders WHERE id = ?', [id]);
+  }
+
+  addReminder(reminder: Omit<Reminder, 'id' | 'createdAt' | 'updatedAt'>): string {
+    const id = Date.now().toString();
+    const now = new Date().toISOString();
+    
+    this.db.runSync(
+      'INSERT INTO reminders (id, time, active, label, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+      [id, reminder.time, reminder.active ? 1 : 0, reminder.label, now, now]
+    );
+    
+    return id;
   }
 
   // Journal methods
