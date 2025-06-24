@@ -1,50 +1,123 @@
-# Welcome to your Expo app 👋
+# MediRemind - Medication Reminder App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+## 🎯 Overview
+MediRemind is a comprehensive React Native medication reminder app built with Expo that helps users track their medications, set reminders, and journal their experiences.
 
-## Get started
+## ✨ Features
 
-1. Install dependencies
+### 🏠 Home Screen
+- View all medications for the day
+- Mark medications as taken/not taken
+- See next scheduled medication
+- Progress summary
 
-   ```bash
-   npm install
-   ```
+### ➕ Add Medication
+- Add new medications with custom icons
+- Choose from 6 color themes
+- Set dosage and timing
+- Form validation
 
-2. Start the app
+### 🔔 Reminders
+- View all medication reminders
+- Toggle reminders on/off
+- Delete unwanted reminders
+- Time-based organization
 
-   ```bash
-   npx expo start
-   ```
+### 📖 Journal
+- Track how you feel after medications
+- Add notes about side effects
+- Link entries to specific medications
+- Emoji-based mood tracking
 
-In the output, you'll find options to open the app in a
+### ⚙️ Settings
+- Light/Dark/System theme modes
+- Notification preferences
+- Help & support information
+- App version details
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## 🛠 Technical Implementation
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+### Architecture
+- **Framework**: React Native with Expo
+- **Navigation**: Expo Router with tabs
+- **Database**: SQLite (expo-sqlite)
+- **State Management**: React Context
+- **Styling**: React Native StyleSheet
+- **Icons**: Expo Vector Icons (Ionicons)
 
-## Get a fresh project
+### Key Components
+- `ThemeProvider`: System theme detection with manual override
+- `DatabaseService`: SQLite operations for data persistence
+- `MedicationCard`: Reusable medication display component
+- Themed color system with light/dark mode support
 
-When you're ready, run:
+### Database Schema
+- **Medications**: id, name, dosage, time, taken, color, icon, timestamps
+- **Reminders**: id, time, active, label, timestamps  
+- **Journal Entries**: id, date, feeling, notes, medications, timestamps
 
-```bash
-npm run reset-project
+### File Structure
+```
+app/
+  (tabs)/
+    index.tsx         # Home screen
+    explore.tsx       # Add medication
+    reminders.tsx     # Reminders management
+    journal.tsx       # Journal entries
+    settings.tsx      # App settings
+  _layout.tsx         # Root layout with theme provider
+components/
+  MedicationCard.tsx  # Medication display component
+contexts/
+  ThemeContext.tsx    # Theme management
+services/
+  database.ts         # SQLite database operations
+types/
+  index.ts           # TypeScript type definitions
+constants/
+  Colors.ts          # Theme colors and utilities
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## 🎨 Design System
+- **Colors**: Comprehensive light/dark theme with medication-specific colors
+- **Typography**: Consistent text sizing and weights
+- **Components**: Reusable styled components with theme support
+- **Accessibility**: Proper labels and touch targets
 
-## Learn more
+## 📱 Platform Support
+- ✅ iOS
+- ✅ Android  
+- ✅ Web (via Expo)
 
-To learn more about developing your project with Expo, look at the following resources:
+## 🚀 Getting Started
+1. Install dependencies: `npm install`
+2. Start development server: `npm start`
+3. Run on device/simulator using QR code or platform commands
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## 📦 Dependencies
+- expo-sqlite: Database persistence
+- @react-native-async-storage/async-storage: Theme preferences
+- expo-router: Navigation
+- @expo/vector-icons: Icons
+- react-native-safe-area-context: Safe area handling
 
-## Join the community
+## 🔄 Data Flow
+1. App loads with ThemeProvider wrapping all components
+2. Database initializes with default sample data
+3. Screens fetch data from DatabaseService
+4. User interactions update SQLite database
+5. UI refreshes with updated data
+6. Theme changes persist via AsyncStorage
 
-Join our community of developers creating universal apps.
+## 🎯 Features Implemented from Original Web App
+✅ Medication tracking with take/not taken status
+✅ Add new medications with icons and colors
+✅ Reminder management system
+✅ Journal entries with mood tracking
+✅ Full theme system (light/dark/auto)
+✅ SQLite data persistence
+✅ React Native best practices
+✅ Expo Vector Icons
+✅ System theme detection
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+This implementation successfully converts the web-based MediRemind app to a native mobile experience while following React Native best practices and maintaining all core functionality.
