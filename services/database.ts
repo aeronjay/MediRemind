@@ -2,11 +2,29 @@ import * as SQLite from 'expo-sqlite';
 import { JournalEntry, Medication, Reminder } from '../types';
 
 class DatabaseService {
-  private db: SQLite.SQLiteDatabase;
+  private db!: SQLite.SQLiteDatabase;
+  private isInitialized: boolean = false;
 
   constructor() {
-    this.db = SQLite.openDatabaseSync('medireminds.db');
-    this.initDatabase();
+    this.initializeDatabase();
+  }
+
+  private initializeDatabase() {
+    try {
+      this.db = SQLite.openDatabaseSync('medireminds.db');
+      this.initDatabase();
+      this.isInitialized = true;
+    } catch (error) {
+      console.error('Error initializing database:', error);
+      // Retry initialization after a short delay
+      setTimeout(() => this.initializeDatabase(), 1000);
+    }
+  }
+
+  private ensureInitialized() {
+    if (!this.isInitialized || !this.db) {
+      throw new Error('Database not initialized yet');
+    }
   }
 
   private initDatabase() {    // Create medications table
@@ -196,9 +214,9 @@ class DatabaseService {
         );
       });
     }  }
-
   // Medications methods
   getMedications(): Medication[] {
+    this.ensureInitialized();
     const results = this.db.getAllSync('SELECT * FROM medications ORDER BY time');
     return results.map((row: any) => ({
       id: row.id,
@@ -214,7 +232,7 @@ class DatabaseService {
       createdAt: row.created_at,
       updatedAt: row.updated_at
     }));
-  }  addMedication(medication: Omit<Medication, 'id' | 'createdAt' | 'updatedAt'>): string {
+  }addMedication(medication: Omit<Medication, 'id' | 'createdAt' | 'updatedAt'>): string {
     const id = Date.now().toString();
     const now = new Date().toISOString();
     const customDaysJson = medication.customDays ? JSON.stringify(medication.customDays) : null;

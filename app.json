@@ -9,7 +9,10 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "UIBackgroundModes": ["background-processing", "background-fetch"]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -17,7 +20,15 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.tebats.medicare"
+      "package": "com.tebats.medicare",
+      "permissions": [
+        "RECEIVE_BOOT_COMPLETED",
+        "SCHEDULE_EXACT_ALARM",
+        "USE_EXACT_ALARM",
+        "WAKE_LOCK",
+        "VIBRATE",
+        "POST_NOTIFICATIONS"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -40,7 +51,9 @@
         {
           "icon": "./assets/images/icon.png",
           "color": "#ffffff",
-          "defaultChannel": "medication-reminders"
+          "defaultChannel": "medication-reminders",
+          "sounds": ["default"],
+          "enableBackgroundRefresh": true
         }
       ]
     ],

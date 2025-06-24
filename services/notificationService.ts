@@ -58,6 +58,23 @@ export interface ReminderNotification {
 
 class NotificationService {
   private notificationIds: Map<string, string[]> = new Map();
+  private isInitialized: boolean = false;
+
+  constructor() {
+    this.initialize();
+  }
+
+  private async initialize() {
+    try {
+      // Ensure device is ready for notifications
+      if (Device.isDevice) {
+        await this.requestPermissions();
+        this.isInitialized = true;
+      }
+    } catch (error) {
+      console.error('Error initializing notification service:', error);
+    }
+  }
 
   async requestPermissions(): Promise<boolean> {
     if (!Device.isDevice) {
@@ -120,7 +137,17 @@ class NotificationService {
     const status = await this.getPermissionStatus();
     return status === 'granted';
   }
+  async ensureInitialized(): Promise<boolean> {
+    if (!this.isInitialized) {
+      await this.initialize();
+    }
+    return this.isInitialized;
+  }
+
   async scheduleReminder(reminder: ReminderNotification): Promise<boolean> {
+    // Ensure service is initialized
+    await this.ensureInitialized();
+    
     const hasPermission = await this.requestPermissions();
     if (!hasPermission) {
       return false;
