@@ -7,11 +7,11 @@ export default {
     icon: "./assets/images/icon.png",
     scheme: "skillswap",
     userInterfaceStyle: "automatic",
-    newArchEnabled: true,
-    ios: {
+    newArchEnabled: true,    ios: {
       supportsTablet: true,
       infoPlist: {
-        UIBackgroundModes: ["background-processing", "background-fetch"]
+        UIBackgroundModes: ["background-processing", "background-fetch"],
+        NSUserNotificationsUsageDescription: "This app uses notifications to remind you about your medication schedule."
       }
     },
     android: {
@@ -45,15 +45,15 @@ export default {
           resizeMode: "contain",
           backgroundColor: "#ffffff"
         }
-      ],
-      [
+      ],      [
         "expo-notifications",
         {
           icon: "./assets/images/icon.png",
           color: "#ffffff",
           defaultChannel: "medication-reminders",
-          sounds: ["default"],
-          enableBackgroundRefresh: true
+          enableBackgroundRefresh: true,
+          requestPermissionsImmediately: false,
+          iosDisplayInForeground: true
         }
       ]
     ],

@@ -37,7 +37,6 @@ Notifications.setNotificationHandler({
                    notification.request.content.title?.includes('ALARM');
     
     return {
-      shouldShowAlert: true,
       shouldPlaySound: true, // Always play sound, especially important for alarms
       shouldSetBadge: false,
       shouldShowBanner: true,
@@ -97,8 +96,7 @@ class NotificationService {
 
     // For Android, set notification channels
     if (Platform.OS === 'android') {
-      try {
-        // Regular medication reminders
+      try {        // Regular medication reminders
         await Notifications.setNotificationChannelAsync('medication-reminders', {
           name: 'Medication Reminders',
           importance: Notifications.AndroidImportance.HIGH,
@@ -106,15 +104,22 @@ class NotificationService {
           lightColor: '#FF231F7C',
           sound: 'default',
           enableVibrate: true,
-        });        // High-priority alarm notifications
+          enableLights: true,
+          lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+          bypassDnd: false,
+        });
+
+        // High-priority alarm notifications
         await Notifications.setNotificationChannelAsync('medication-alarms', {
           name: 'Medication Alarms',
           importance: Notifications.AndroidImportance.MAX,
           vibrationPattern: [0, 500, 200, 500, 200, 500],
           lightColor: '#FF0000',
-          sound: 'default', // Will use default ringtone sound
+          sound: 'default',
           enableVibrate: true,
           enableLights: true,
+          lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+          bypassDnd: true, // Bypass Do Not Disturb for alarms
         });
       } catch (error) {
         console.warn('Error setting up notification channels:', error);
@@ -435,25 +440,37 @@ class NotificationService {
       console.error('Error scheduling snooze notification:', error);
       return null;
     }
-  }private getNotificationContent(reminder: ReminderNotification): Notifications.NotificationContentInput {
+  }  private getNotificationContent(reminder: ReminderNotification): Notifications.NotificationContentInput {
     const isAlarm = reminder.alarmType === 'alarm';
     
     const baseContent: Notifications.NotificationContentInput = {
       title: isAlarm ? '🚨 MEDICATION ALARM' : '💊 Medication Reminder',
       body: reminder.label,
-      sound: 'default', // Default system sound/ringtone
+      sound: 'default',
       priority: isAlarm 
         ? Notifications.AndroidNotificationPriority.MAX 
         : Notifications.AndroidNotificationPriority.HIGH,
       vibrate: isAlarm ? [0, 500, 200, 500, 200, 500] : [0, 250, 250, 250],
       categoryIdentifier: isAlarm ? 'medication-alarm' : 'medication-reminder',
       sticky: isAlarm,
+      autoDismiss: !isAlarm, // Alarms stay until manually dismissed
+      data: {
+        type: isAlarm ? 'alarm' : 'notification',
+        reminderId: reminder.id,
+        timestamp: Date.now(),
+      },
     };
 
     // For Android, use the appropriate notification channel for proper alarm sound
     if (Platform.OS === 'android') {
       (baseContent as any).android = {
         channelId: isAlarm ? 'medication-alarms' : 'medication-reminders',
+        color: isAlarm ? '#FF0000' : '#007AFF',
+        priority: isAlarm ? 'max' : 'high',
+        visibility: 'public',
+        showWhen: true,
+        localOnly: false,
+        ongoing: isAlarm, // Makes alarm notifications persistent
       };
     }
 
