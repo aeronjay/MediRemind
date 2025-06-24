@@ -215,7 +215,6 @@ class DatabaseService {
     
     return id;
   }
-
   updateMedicationTaken(id: string, taken: boolean): void {
     const now = new Date().toISOString();
     
@@ -223,6 +222,54 @@ class DatabaseService {
       'UPDATE medications SET taken = ?, updated_at = ? WHERE id = ?',
       [taken ? 1 : 0, now, id]
     );
+  }
+
+  updateMedication(id: string, medication: Partial<Omit<Medication, 'id' | 'createdAt' | 'updatedAt'>>): void {
+    const now = new Date().toISOString();
+    const updates: string[] = [];
+    const values: any[] = [];
+
+    // Build the update query dynamically based on provided fields
+    if (medication.name !== undefined) {
+      updates.push('name = ?');
+      values.push(medication.name);
+    }
+    if (medication.dosage !== undefined) {
+      updates.push('dosage = ?');
+      values.push(medication.dosage);
+    }
+    if (medication.time !== undefined) {
+      updates.push('time = ?');
+      values.push(medication.time);
+    }
+    if (medication.taken !== undefined) {
+      updates.push('taken = ?');
+      values.push(medication.taken ? 1 : 0);
+    }
+    if (medication.color !== undefined) {
+      updates.push('color = ?');
+      values.push(medication.color);
+    }
+    if (medication.icon !== undefined) {
+      updates.push('icon = ?');
+      values.push(medication.icon);
+    }
+
+    // Add updated_at timestamp
+    updates.push('updated_at = ?');
+    values.push(now);
+
+    // Add the id to values array
+    values.push(id);
+
+    if (updates.length > 0) {
+      const query = `UPDATE medications SET ${updates.join(', ')} WHERE id = ?`;
+      this.db.runSync(query, values);
+    }
+  }
+
+  deleteMedication(id: string): void {
+    this.db.runSync('DELETE FROM medications WHERE id = ?', [id]);
   }
 
   // Reminders methods

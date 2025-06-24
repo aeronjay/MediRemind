@@ -6,7 +6,7 @@ import { Medication } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
@@ -42,7 +42,6 @@ export default function HomeScreen() {
     loadMedications();
     setRefreshing(false);
   };
-
   const handleToggleTaken = (medicationId: string) => {
     try {
       const medication = medications.find(m => m.id === medicationId);
@@ -53,6 +52,44 @@ export default function HomeScreen() {
     } catch (error) {
       console.error('Error updating medication:', error);
     }
+  };
+
+  const handleEditMedication = (medication: Medication) => {
+    // Navigation would typically go here to an edit screen
+    // For now, we'll use a simple alert to demonstrate the functionality
+    Alert.alert(
+      "Edit Medication",
+      `You would now edit ${medication.name}`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "OK", 
+          onPress: () => console.log("Edit medication", medication.id) 
+        }
+      ]
+    );
+  };
+
+  const handleDeleteMedication = (medicationId: string, medicationName: string) => {
+    Alert.alert(
+      "Delete Medication",
+      `Are you sure you want to delete ${medicationName}?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Delete", 
+          style: "destructive",
+          onPress: () => {
+            try {
+              databaseService.deleteMedication(medicationId);
+              loadMedications(); // Refresh the list
+            } catch (error) {
+              console.error('Error deleting medication:', error);
+            }
+          }
+        }
+      ]
+    );
   };
 
   // Helper function to calculate time difference in minutes
@@ -196,7 +233,6 @@ export default function HomeScreen() {
             <Text style={styles.subtitleText}>Today's Medications</Text>
           </View>
         </View>
-
         <View style={styles.medicationsContainer}>
           {sortedMedications.map(medication => (
             <MedicationCard
@@ -204,10 +240,11 @@ export default function HomeScreen() {
               medication={medication}
               onToggleTaken={() => handleToggleTaken(medication.id)}
               timeDifference={!medication.taken ? formatTimeDifference(medication.time) : undefined}
+              onEdit={() => handleEditMedication(medication)}
+              onDelete={() => handleDeleteMedication(medication.id, medication.name)}
             />
           ))}
         </View>
-
         <View style={styles.summaryCard}>
           <Text style={styles.summaryTitle}>
             {medications.every(med => med.taken) ? 'All caught up!' : 'Medications remaining'}
