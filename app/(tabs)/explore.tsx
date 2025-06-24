@@ -1,110 +1,289 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { Colors } from '@/constants/Colors';
+import { useTheme } from '@/contexts/ThemeContext';
+import { databaseService } from '@/services/database';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import React, { useState } from 'react';
+import {
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Collapsible } from '@/components/Collapsible';
-import { ExternalLink } from '@/components/ExternalLink';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { IconSymbol } from '@/components/ui/IconSymbol';
+export default function AddMedicationScreen() {
+  const { isDark } = useTheme();
+  const colors = isDark ? Colors.dark : Colors.light;
+  
+  const [name, setName] = useState('');
+  const [dosage, setDosage] = useState('');
+  const [time, setTime] = useState('');
+  const [selectedIcon, setSelectedIcon] = useState('💊');
+  const [selectedColor, setSelectedColor] = useState('blue');
 
-export default function TabTwoScreen() {
+  const medicationIcons = ['💊', '💉', '🌡️', '🩺', '🌞', '🌙', '❤️', '🫁', '🧠'];
+  const medicationColors = [
+    { name: 'blue', label: 'Blue' },
+    { name: 'green', label: 'Green' },
+    { name: 'yellow', label: 'Yellow' },
+    { name: 'purple', label: 'Purple' },
+    { name: 'red', label: 'Red' },
+    { name: 'indigo', label: 'Indigo' },
+  ];
+
+  const handleSubmit = () => {
+    if (!name.trim() || !dosage.trim() || !time.trim()) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    try {
+      databaseService.addMedication({
+        name: name.trim(),
+        dosage: dosage.trim(),
+        time,
+        taken: false,
+        color: selectedColor,
+        icon: selectedIcon,
+      });
+
+      Alert.alert('Success', 'Medication added successfully!', [
+        {
+          text: 'OK',
+          onPress: () => {
+            // Reset form
+            setName('');
+            setDosage('');
+            setTime('');
+            setSelectedIcon('💊');
+            setSelectedColor('blue');            // Navigate back to home
+            router.push('/(tabs)');
+          },
+        },
+      ]);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to add medication');
+      console.error('Error adding medication:', error);
+    }
+  };
+
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    content: {
+      flex: 1,
+      padding: 16,
+    },
+    header: {
+      alignItems: 'center',
+      marginBottom: 24,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: colors.text,
+      marginBottom: 8,
+    },
+    subtitle: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+    form: {
+      gap: 24,
+    },
+    formGroup: {
+      gap: 8,
+    },
+    label: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    input: {
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 8,
+      padding: 16,
+      fontSize: 16,
+      color: colors.text,
+    },
+    iconGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    iconButton: {
+      width: 56,
+      height: 56,
+      borderRadius: 8,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 2,
+    },
+    iconButtonSelected: {
+      borderColor: colors.primary,
+      backgroundColor: colors.primary,
+    },
+    iconButtonUnselected: {
+      borderColor: colors.border,
+      backgroundColor: colors.muted,
+    },
+    icon: {
+      fontSize: 24,
+    },
+    colorGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    colorButton: {
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderRadius: 8,
+      borderWidth: 2,
+      minWidth: 80,
+      alignItems: 'center',
+    },
+    colorButtonSelected: {
+      borderColor: colors.primary,
+      backgroundColor: colors.primary,
+    },
+    colorButtonUnselected: {
+      borderColor: colors.border,
+      backgroundColor: colors.muted,
+    },
+    colorText: {
+      fontSize: 14,
+      fontWeight: '500',
+    },
+    colorTextSelected: {
+      color: colors.primaryForeground,
+    },
+    colorTextUnselected: {
+      color: colors.text,
+    },
+    submitButton: {
+      backgroundColor: colors.primary,
+      borderRadius: 8,
+      padding: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 16,
+    },
+    submitButtonText: {
+      color: colors.primaryForeground,
+      fontSize: 18,
+      fontWeight: '600',
+      marginLeft: 8,
+    },
+  });
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
-          style={styles.headerImage}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Explore</ThemedText>
-      </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-        <Image source={require('@/assets/images/react-logo.png')} style={{ alignSelf: 'center' }} />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Custom fonts">
-        <ThemedText>
-          Open <ThemedText type="defaultSemiBold">app/_layout.tsx</ThemedText> to see how to load{' '}
-          <ThemedText style={{ fontFamily: 'SpaceMono' }}>
-            custom fonts such as this one.
-          </ThemedText>
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/versions/latest/sdk/font">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful <ThemedText type="defaultSemiBold">react-native-reanimated</ThemedText>{' '}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
-            </ThemedText>
-          ),
-        })}
-      </Collapsible>
-    </ParallaxScrollView>
+    <SafeAreaView style={styles.container}>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Add Medication</Text>
+          <Text style={styles.subtitle}>Enter your medication details</Text>
+        </View>
+
+        <View style={styles.form}>
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Medication Name</Text>
+            <TextInput
+              style={styles.input}
+              value={name}
+              onChangeText={setName}
+              placeholder="e.g. Lisinopril"
+              placeholderTextColor={colors.textSecondary}
+            />
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Choose an Icon</Text>
+            <View style={styles.iconGrid}>
+              {medicationIcons.map((icon, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.iconButton,
+                    selectedIcon === icon
+                      ? styles.iconButtonSelected
+                      : styles.iconButtonUnselected,
+                  ]}
+                  onPress={() => setSelectedIcon(icon)}
+                >
+                  <Text style={styles.icon}>{icon}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Color</Text>
+            <View style={styles.colorGrid}>
+              {medicationColors.map((color) => (
+                <TouchableOpacity
+                  key={color.name}
+                  style={[
+                    styles.colorButton,
+                    selectedColor === color.name
+                      ? styles.colorButtonSelected
+                      : styles.colorButtonUnselected,
+                  ]}
+                  onPress={() => setSelectedColor(color.name)}
+                >
+                  <Text
+                    style={[
+                      styles.colorText,
+                      selectedColor === color.name
+                        ? styles.colorTextSelected
+                        : styles.colorTextUnselected,
+                    ]}
+                  >
+                    {color.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Dosage</Text>
+            <TextInput
+              style={styles.input}
+              value={dosage}
+              onChangeText={setDosage}
+              placeholder="e.g. 10mg"
+              placeholderTextColor={colors.textSecondary}
+            />
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Time</Text>
+            <TextInput
+              style={styles.input}
+              value={time}
+              onChangeText={setTime}
+              placeholder="e.g. 8:00 AM"
+              placeholderTextColor={colors.textSecondary}
+            />
+          </View>
+
+          <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+            <Ionicons name="add" size={20} color={colors.primaryForeground} />
+            <Text style={styles.submitButtonText}>Add Medication</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  headerImage: {
-    color: '#808080',
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
-  },
-  titleContainer: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-});

@@ -1,75 +1,149 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+import { MedicationCard } from '@/components/MedicationCard';
+import { Colors } from '@/constants/Colors';
+import { useTheme } from '@/contexts/ThemeContext';
+import { databaseService } from '@/services/database';
+import { Medication } from '@/types';
+import { Ionicons } from '@expo/vector-icons';
+import React, { useEffect, useState } from 'react';
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
+  const { isDark } = useTheme();
+  const colors = isDark ? Colors.dark : Colors.light;
+  const [medications, setMedications] = useState<Medication[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadMedications = () => {
+    try {
+      const meds = databaseService.getMedications();
+      setMedications(meds);
+    } catch (error) {
+      console.error('Error loading medications:', error);
+    }
+  };
+
+  useEffect(() => {
+    loadMedications();
+  }, []);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadMedications();
+    setRefreshing(false);
+  };
+
+  const handleToggleTaken = (medicationId: string) => {
+    try {
+      const medication = medications.find(m => m.id === medicationId);
+      if (medication) {
+        databaseService.updateMedicationTaken(medicationId, !medication.taken);
+        loadMedications(); // Refresh the list
+      }
+    } catch (error) {
+      console.error('Error updating medication:', error);
+    }
+  };
+
+  const nextMedication = medications
+    .filter(med => !med.taken)
+    .sort((a, b) => {
+      const timeA = new Date('1970/01/01 ' + a.time).getTime();
+      const timeB = new Date('1970/01/01 ' + b.time).getTime();
+      return timeA - timeB;
+    })[0];
+
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    content: {
+      flex: 1,
+      padding: 16,
+    },
+    header: {
+      alignItems: 'center',
+      marginBottom: 24,
+    },
+    title: {
+      fontSize: 28,
+      fontWeight: 'bold',
+      color: colors.text,
+      marginBottom: 8,
+    },
+    subtitle: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 8,
+    },
+    subtitleText: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      marginLeft: 8,
+    },
+    medicationsContainer: {
+      gap: 16,
+      marginBottom: 24,
+    },
+    summaryCard: {
+      backgroundColor: colors.muted,
+      borderRadius: 12,
+      padding: 20,
+      alignItems: 'center',
+    },
+    summaryTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 8,
+    },
+    summarySubtitle: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 20,
+    },
+  });
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <SafeAreaView style={styles.container}>
+      <ScrollView
+        style={styles.content}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}>
+          <Text style={styles.title}>MediRemind</Text>
+          <View style={styles.subtitle}>
+            <Ionicons name="time-outline" size={20} color={colors.textSecondary} />
+            <Text style={styles.subtitleText}>Today's Medications</Text>
+          </View>
+        </View>
+
+        <View style={styles.medicationsContainer}>
+          {medications.map(medication => (
+            <MedicationCard
+              key={medication.id}
+              medication={medication}
+              onToggleTaken={() => handleToggleTaken(medication.id)}
+            />
+          ))}
+        </View>
+
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryTitle}>
+            {medications.every(med => med.taken) ? 'All caught up!' : 'Medications remaining'}
+          </Text>
+          <Text style={styles.summarySubtitle}>
+            {nextMedication
+              ? `Your next medication is at ${nextMedication.time}`
+              : 'No more medications scheduled for today'}
+          </Text>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});
