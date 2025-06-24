@@ -18,6 +18,10 @@ export type Reminder = {
   time: string;
   active: boolean;
   label: string;
+  frequency: 'daily' | 'weekly' | 'weekdays' | 'custom';
+  customDays?: string[];
+  until?: string;
+  alarmType: 'notification' | 'alarm';
   createdAt: string;
   updatedAt: string;
 };

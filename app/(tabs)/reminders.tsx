@@ -2,6 +2,7 @@ import AddReminderModal from '@/components/AddReminderModal';
 import { Colors } from '@/constants/Colors';
 import { useTheme } from '@/contexts/ThemeContext';
 import { databaseService } from '@/services/database';
+import { notificationService } from '@/services/notificationService';
 import { Reminder } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
@@ -21,11 +22,25 @@ export default function RemindersScreen() {
   const colors = isDark ? Colors.dark : Colors.light;
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
-
-  const loadReminders = () => {
+  const loadReminders = async () => {
     try {
       const remindersList = databaseService.getReminders();
       setReminders(remindersList);
+      
+      // Schedule notifications for all active reminders
+      for (const reminder of remindersList) {
+        if (reminder.active) {
+          await notificationService.scheduleReminder({
+            id: reminder.id,
+            time: reminder.time,
+            label: reminder.label,
+            frequency: reminder.frequency,
+            customDays: reminder.customDays,
+            until: reminder.until,
+            alarmType: reminder.alarmType,
+          });
+        }
+      }
     } catch (error) {
       console.error('Error loading reminders:', error);
     }
@@ -34,17 +49,39 @@ export default function RemindersScreen() {
   useEffect(() => {
     loadReminders();
   }, []);
-
-  const handleToggleReminder = (id: string, active: boolean) => {
+  const handleToggleReminder = async (id: string, active: boolean) => {
     try {
+      // Update database
       databaseService.updateReminderActive(id, active);
+      
+      // Get the updated reminder data to schedule/cancel notifications
+      const reminders = databaseService.getReminders();
+      const reminder = reminders.find(r => r.id === id);
+      
+      if (reminder) {
+        if (active) {
+          // Schedule the notification when activating
+          await notificationService.scheduleReminder({
+            id: reminder.id,
+            time: reminder.time,
+            label: reminder.label,
+            frequency: reminder.frequency,
+            customDays: reminder.customDays,
+            until: reminder.until,
+            alarmType: reminder.alarmType,
+          });
+        } else {
+          // Cancel the notification when deactivating
+          await notificationService.cancelReminder(reminder.id);
+        }
+      }
+      
       loadReminders();
     } catch (error) {
       console.error('Error updating reminder:', error);
       Alert.alert('Error', 'Failed to update reminder');
     }
-  };
-  const handleDeleteReminder = (id: string) => {
+  };  const handleDeleteReminder = (id: string) => {
     Alert.alert(
       'Delete Reminder',
       'Are you sure you want to delete this reminder?',
@@ -53,8 +90,12 @@ export default function RemindersScreen() {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: () => {
+          onPress: async () => {
             try {
+              // Cancel any scheduled notifications first
+              await notificationService.cancelReminder(id);
+              
+              // Then delete from database
               databaseService.deleteReminder(id);
               loadReminders();
             } catch (error) {
@@ -66,8 +107,16 @@ export default function RemindersScreen() {
       ]
     );
   };
-
-  const handleAddReminder = (reminderData: { time: string; label: string; active: boolean }) => {
+  const handleAddReminder = (reminderData: {
+    id: string;
+    time: string;
+    label: string;
+    active: boolean;
+    frequency: 'daily' | 'weekly' | 'weekdays' | 'custom';
+    customDays?: string[];
+    until?: string;
+    alarmType: 'notification' | 'alarm';
+  }) => {
     try {
       databaseService.addReminder(reminderData);
       loadReminders();
@@ -125,19 +174,57 @@ export default function RemindersScreen() {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-    },
-    reminderInfo: {
+    },    reminderInfo: {
       flex: 1,
+    },
+    reminderHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 4,
+    },
+    reminderBadges: {
+      flexDirection: 'row',
+      gap: 4,
+    },
+    badge: {
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 4,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 2,
+    },
+    alarmBadge: {
+      backgroundColor: '#ff4444',
+    },
+    frequencyBadge: {
+      backgroundColor: colors.primary,
+    },
+    badgeText: {
+      fontSize: 10,
+      fontWeight: '600',
+      color: '#fff',
     },
     reminderTime: {
       fontSize: 18,
       fontWeight: '600',
       color: colors.text,
-      marginBottom: 4,
     },
     reminderLabel: {
       fontSize: 14,
       color: colors.textSecondary,
+      marginBottom: 4,
+    },
+    reminderDays: {
+      fontSize: 12,
+      color: colors.primary,
+      fontWeight: '500',
+    },
+    reminderUntil: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      fontStyle: 'italic',
     },
     reminderControls: {
       flexDirection: 'row',
@@ -192,14 +279,40 @@ export default function RemindersScreen() {
           <View style={styles.emptyState}>
             <Ionicons name="notifications-off" size={64} color={colors.textSecondary} />
             <Text style={styles.emptyText}>No reminders set up yet</Text>
-          </View>
-        ) : (
+          </View>        ) : (
           reminders.map((reminder) => (
             <View key={reminder.id} style={styles.reminderCard}>
               <View style={styles.reminderContent}>
                 <View style={styles.reminderInfo}>
-                  <Text style={styles.reminderTime}>{reminder.time}</Text>
+                  <View style={styles.reminderHeader}>
+                    <Text style={styles.reminderTime}>{reminder.time}</Text>
+                    <View style={styles.reminderBadges}>
+                      {reminder.alarmType === 'alarm' && (
+                        <View style={[styles.badge, styles.alarmBadge]}>
+                          <Ionicons name="alarm" size={12} color="#fff" />
+                          <Text style={styles.badgeText}>ALARM</Text>
+                        </View>
+                      )}
+                      <View style={[styles.badge, styles.frequencyBadge]}>
+                        <Text style={styles.badgeText}>
+                          {reminder.frequency === 'weekdays' ? 'Mon-Fri' : 
+                           reminder.frequency === 'custom' ? 'Custom' :
+                           reminder.frequency.charAt(0).toUpperCase() + reminder.frequency.slice(1)}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
                   <Text style={styles.reminderLabel}>{reminder.label}</Text>
+                  {reminder.frequency === 'custom' && reminder.customDays && (
+                    <Text style={styles.reminderDays}>
+                      {reminder.customDays.map(day => day.substring(0, 3)).join(', ')}
+                    </Text>
+                  )}
+                  {reminder.until && (
+                    <Text style={styles.reminderUntil}>
+                      Until: {new Date(reminder.until).toLocaleDateString()}
+                    </Text>
+                  )}
                 </View>
                 <View style={styles.reminderControls}>
                   <Switch

@@ -43,21 +43,21 @@ class DatabaseService {
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
-    `);
-
-    // Create reminders table
+    `);    // Create reminders table
     this.db.execSync(`
       CREATE TABLE IF NOT EXISTS reminders (
         id TEXT PRIMARY KEY,
         time TEXT NOT NULL,
         active INTEGER DEFAULT 1,
         label TEXT NOT NULL,
+        frequency TEXT NOT NULL DEFAULT 'daily',
+        custom_days TEXT,
+        until TEXT,
+        alarm_type TEXT NOT NULL DEFAULT 'notification',
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
-    `);
-
-    // Create journal_entries table
+    `);    // Create journal_entries table
     this.db.execSync(`
       CREATE TABLE IF NOT EXISTS journal_entries (
         id TEXT PRIMARY KEY,
@@ -69,6 +69,31 @@ class DatabaseService {
         updated_at TEXT NOT NULL
       );
     `);
+
+    // Add migration for reminders table to add new columns if they don't exist
+    try {
+      this.db.execSync(`ALTER TABLE reminders ADD COLUMN frequency TEXT DEFAULT 'daily';`);
+    } catch (e) {
+      // Column already exists
+    }
+    
+    try {
+      this.db.execSync(`ALTER TABLE reminders ADD COLUMN custom_days TEXT;`);
+    } catch (e) {
+      // Column already exists
+    }
+    
+    try {
+      this.db.execSync(`ALTER TABLE reminders ADD COLUMN until TEXT;`);
+    } catch (e) {
+      // Column already exists
+    }
+    
+    try {
+      this.db.execSync(`ALTER TABLE reminders ADD COLUMN alarm_type TEXT DEFAULT 'notification';`);
+    } catch (e) {
+      // Column already exists
+    }
 
     // Insert default data if tables are empty
     this.insertDefaultData();
@@ -324,7 +349,6 @@ class DatabaseService {
   deleteMedication(id: string): void {
     this.db.runSync('DELETE FROM medications WHERE id = ?', [id]);
   }
-
   // Reminders methods
   getReminders(): Reminder[] {
     const results = this.db.getAllSync('SELECT * FROM reminders ORDER BY time');
@@ -333,6 +357,10 @@ class DatabaseService {
       time: row.time,
       active: Boolean(row.active),
       label: row.label,
+      frequency: row.frequency || 'daily',
+      customDays: row.custom_days ? JSON.parse(row.custom_days) : undefined,
+      until: row.until || undefined,
+      alarmType: row.alarm_type || 'notification',
       createdAt: row.created_at,
       updatedAt: row.updated_at
     }));
@@ -348,15 +376,24 @@ class DatabaseService {
   }
   deleteReminder(id: string): void {
     this.db.runSync('DELETE FROM reminders WHERE id = ?', [id]);
-  }
-
-  addReminder(reminder: Omit<Reminder, 'id' | 'createdAt' | 'updatedAt'>): string {
-    const id = Date.now().toString();
+  }  addReminder(reminder: Omit<Reminder, 'createdAt' | 'updatedAt'> | Omit<Reminder, 'id' | 'createdAt' | 'updatedAt'>): string {
+    const id = (reminder as any).id || Date.now().toString();
     const now = new Date().toISOString();
     
     this.db.runSync(
-      'INSERT INTO reminders (id, time, active, label, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-      [id, reminder.time, reminder.active ? 1 : 0, reminder.label, now, now]
+      'INSERT INTO reminders (id, time, active, label, frequency, custom_days, until, alarm_type, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [
+        id, 
+        reminder.time, 
+        reminder.active ? 1 : 0, 
+        reminder.label, 
+        reminder.frequency || 'daily',
+        reminder.customDays ? JSON.stringify(reminder.customDays) : null,
+        reminder.until || null,
+        reminder.alarmType || 'notification',
+        now, 
+        now
+      ]
     );
     
     return id;

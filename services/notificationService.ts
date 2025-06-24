@@ -151,12 +151,12 @@ class NotificationService {
     const hasPermission = await this.requestPermissions();
     if (!hasPermission) {
       return false;
-    }
-
-    // Validate time format
-    const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
-    if (!timeRegex.test(reminder.time)) {
-      console.error('Invalid time format:', reminder.time);
+    }    // Validate time format and parse
+    const timeRegex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/;
+    const timeMatch = reminder.time.match(timeRegex);
+    
+    if (!timeMatch) {
+      console.error('Invalid time format:', reminder.time, 'Expected format: HH:MM (24-hour)');
       return false;
     }
 
@@ -164,7 +164,8 @@ class NotificationService {
     await this.cancelReminder(reminder.id);
 
     const scheduledIds: string[] = [];
-    const [hours, minutes] = reminder.time.split(':').map(Number);
+    const hours = parseInt(timeMatch[1], 10);
+    const minutes = parseInt(timeMatch[2], 10);
 
     // Validate hours and minutes
     if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {

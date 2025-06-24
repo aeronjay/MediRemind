@@ -5,15 +5,15 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 // Days of the week for frequency selection
@@ -90,6 +90,11 @@ export default function AddReminderModal({
       );
     }
   };
+  // Helper function to format time consistently
+  const formatTime = (date: Date) => {
+    return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+  };
+
   const handleSubmit = async () => {
     if (!label.trim()) {
       Alert.alert('Error', 'Please enter a reminder label');
@@ -99,12 +104,8 @@ export default function AddReminderModal({
     if (!hasPermission) {
       Alert.alert('Error', 'Notification permissions are required to set reminders');
       return;
-    }
-
-    const timeString = time.toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    }    // Format time as 24-hour HH:MM format for consistent parsing
+    const timeString = formatTime(time);
 
     const reminderId = `reminder_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
@@ -432,11 +433,8 @@ export default function AddReminderModal({
                 style={styles.timeButton}
                 onPress={() => setShowTimePicker(true)}
               >
-                <Text style={styles.timeButtonText}>
-                  {time.toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
+              <Text style={styles.timeButtonText}>
+                  {formatTime(time)}
                 </Text>
                 <Ionicons name="time" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
