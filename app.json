@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "skill-swap",
-    "slug": "skill-swap",
+    "slug": "medicare",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -45,6 +45,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "a03cf826-0e20-48d1-bf8c-41b6635b60b8"
+      }
+    },
+    "owner": "tebats"
   }
 }

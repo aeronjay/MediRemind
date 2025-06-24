@@ -1,8 +1,9 @@
 import { Colors } from '@/constants/Colors';
 import { useTheme } from '@/contexts/ThemeContext';
+import { notificationService } from '@/services/notificationService';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Alert,
     Modal,
@@ -14,7 +15,6 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { notificationService } from '@/services/notificationService';
 
 // Days of the week for frequency selection
 const DAYS_OF_WEEK = [

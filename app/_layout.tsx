@@ -3,13 +3,12 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { Alert, Platform } from 'react-native';
+import { Alert } from 'react-native';
 import 'react-native-reanimated';
-import * as Notifications from 'expo-notifications';
 
 import { ThemeProvider } from '@/contexts/ThemeContext';
-import { useColorScheme } from 'react-native';
 import { notificationService } from '@/services/notificationService';
+import { useColorScheme } from 'react-native';
 
 export default function RootLayout() {
   const systemColorScheme = useColorScheme();
