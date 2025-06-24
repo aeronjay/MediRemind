@@ -90,6 +90,9 @@ export default function JournalScreen() {
       flex: 1,
       padding: 16,
     },
+    contentContainer: {
+      paddingBottom: 100, // Add padding to the bottom to prevent content from being hidden behind the nav bar
+    },
     header: {
       alignItems: 'center',
       marginBottom: 24,
@@ -283,7 +286,11 @@ export default function JournalScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.content} 
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.header}>
           <Text style={styles.title}>Journal</Text>
           <Text style={styles.subtitle}>Track your medication experiences</Text>

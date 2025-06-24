@@ -4,7 +4,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { databaseService } from '@/services/database';
 import { Medication } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import React, { useCallback, useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -23,9 +24,18 @@ export default function HomeScreen() {
     }
   };
 
+  // Load medications on initial mount
   useEffect(() => {
     loadMedications();
   }, []);
+
+  // Reload medications when the screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadMedications();
+      return () => {};
+    }, [])
+  );
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -45,13 +55,53 @@ export default function HomeScreen() {
     }
   };
 
-  const nextMedication = medications
-    .filter(med => !med.taken)
-    .sort((a, b) => {
-      const timeA = new Date('1970/01/01 ' + a.time).getTime();
-      const timeB = new Date('1970/01/01 ' + b.time).getTime();
-      return timeA - timeB;
-    })[0];
+  // Helper function to calculate time difference in minutes
+  const getTimeDifferenceInMinutes = (timeStr: string): number => {
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    
+    // Parse the medication time (e.g., "8:00 AM")
+    const [timePart, ampm] = timeStr.split(' ');
+    const [hourStr, minuteStr] = timePart.split(':');
+    let hour = parseInt(hourStr, 10);
+    const minute = parseInt(minuteStr, 10);
+    
+    // Convert to 24-hour format
+    if (ampm === 'PM' && hour < 12) {
+      hour += 12;
+    } else if (ampm === 'AM' && hour === 12) {
+      hour = 0;
+    }
+    
+    // Calculate time difference in minutes
+    let diff = (hour * 60 + minute) - (currentHour * 60 + currentMinute);
+    
+    // If the time has already passed today, assume it's for tomorrow (+24 hours)
+    if (diff < 0) {
+      diff += 24 * 60;
+    }
+    
+    return diff;
+  };
+
+  // Sort medications by closest upcoming time and taken status
+  const sortedMedications = [...medications].sort((a, b) => {
+    // Put taken medications at the end
+    if (a.taken && !b.taken) return 1;
+    if (!a.taken && b.taken) return -1;
+    
+    // For untaken medications, sort by closest time
+    if (!a.taken && !b.taken) {
+      return getTimeDifferenceInMinutes(a.time) - getTimeDifferenceInMinutes(b.time);
+    }
+    
+    // For taken medications, also sort by time
+    return getTimeDifferenceInMinutes(a.time) - getTimeDifferenceInMinutes(b.time);
+  });
+
+  // Get the next upcoming medication (first untaken medication)
+  const nextMedication = sortedMedications.find(med => !med.taken);
 
   const styles = StyleSheet.create({
     container: {
@@ -61,6 +111,9 @@ export default function HomeScreen() {
     content: {
       flex: 1,
       padding: 16,
+    },
+    contentContainer: {
+      paddingBottom: 100, // Add padding to the bottom to prevent content from being hidden behind the nav bar
     },
     header: {
       alignItems: 'center',
@@ -104,12 +157,33 @@ export default function HomeScreen() {
       textAlign: 'center',
       lineHeight: 20,
     },
+    nextDoseInfo: {
+      fontSize: 14,
+      color: colors.primary,
+      marginTop: 4,
+    },
   });
+
+  // Format time difference for display
+  const formatTimeDifference = (timeStr: string): string => {
+    const diff = getTimeDifferenceInMinutes(timeStr);
+    
+    if (diff === 0) {
+      return 'Now';
+    } else if (diff < 60) {
+      return `In ${diff} minute${diff === 1 ? '' : 's'}`;
+    } else {
+      const hours = Math.floor(diff / 60);
+      const minutes = diff % 60;
+      return `In ${hours} hour${hours === 1 ? '' : 's'}${minutes > 0 ? ` ${minutes} minute${minutes === 1 ? '' : 's'}` : ''}`;
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
         style={styles.content}
+        contentContainerStyle={styles.contentContainer}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -124,11 +198,12 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.medicationsContainer}>
-          {medications.map(medication => (
+          {sortedMedications.map(medication => (
             <MedicationCard
               key={medication.id}
               medication={medication}
               onToggleTaken={() => handleToggleTaken(medication.id)}
+              timeDifference={!medication.taken ? formatTimeDifference(medication.time) : undefined}
             />
           ))}
         </View>
@@ -142,6 +217,11 @@ export default function HomeScreen() {
               ? `Your next medication is at ${nextMedication.time}`
               : 'No more medications scheduled for today'}
           </Text>
+          {nextMedication && (
+            <Text style={styles.nextDoseInfo}>
+              {formatTimeDifference(nextMedication.time)}
+            </Text>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>

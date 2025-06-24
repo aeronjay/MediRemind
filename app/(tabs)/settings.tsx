@@ -60,6 +60,9 @@ export default function SettingsScreen() {
       flex: 1,
       padding: 16,
     },
+    contentContainer: {
+      paddingBottom: 100, // Add padding to the bottom to prevent content from being hidden behind the nav bar
+    },
     header: {
       alignItems: 'center',
       marginBottom: 32,
@@ -159,7 +162,11 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.content} 
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.header}>
           <Text style={styles.title}>Settings</Text>
           <Text style={styles.subtitle}>Customize your MediRemind experience</Text>

@@ -8,11 +8,13 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 interface MedicationCardProps {
   medication: Medication;
   onToggleTaken: () => void;
+  timeDifference?: string;
 }
 
 export const MedicationCard: React.FC<MedicationCardProps> = ({
   medication,
   onToggleTaken,
+  timeDifference,
 }) => {
   const { isDark } = useTheme();
   const colors = isDark ? Colors.dark : Colors.light;
@@ -72,6 +74,12 @@ export const MedicationCard: React.FC<MedicationCardProps> = ({
       color: colors.text,
       marginBottom: 4,
     },
+    timeDifference: {
+      fontSize: 12,
+      fontWeight: '500',
+      color: colors.primary,
+      marginBottom: 4,
+    },
     checkButton: {
       padding: 4,
     },
@@ -94,10 +102,15 @@ export const MedicationCard: React.FC<MedicationCardProps> = ({
         </View>
         <View style={styles.rightSection}>
           <Text style={styles.time}>{medication.time}</Text>
+          {timeDifference && (
+            <Text style={styles.timeDifference}>{timeDifference}</Text>
+          )}
           <TouchableOpacity
             style={styles.checkButton}
             onPress={onToggleTaken}
-            accessibilityLabel={medication.taken ? 'Mark as not taken' : 'Mark as taken'}
+            accessibilityLabel={
+              medication.taken ? 'Mark as not taken' : 'Mark as taken'
+            }
           >
             {medication.taken ? (
               <Ionicons

@@ -1,3 +1,4 @@
+import AddReminderModal from '@/components/AddReminderModal';
 import { Colors } from '@/constants/Colors';
 import { useTheme } from '@/contexts/ThemeContext';
 import { databaseService } from '@/services/database';
@@ -14,7 +15,6 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import AddReminderModal from '@/components/AddReminderModal';
 
 export default function RemindersScreen() {
   const { isDark } = useTheme();
@@ -86,6 +86,9 @@ export default function RemindersScreen() {
     content: {
       flex: 1,
       padding: 16,
+    },
+    contentContainer: {
+      paddingBottom: 100, // Add padding to the bottom to prevent content from being hidden behind the nav bar
     },
     header: {
       alignItems: 'center',
@@ -175,7 +178,11 @@ export default function RemindersScreen() {
   });
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.content} 
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.header}>
           <Text style={styles.title}>Reminders</Text>
           <Text style={styles.subtitle}>Manage your medication alerts</Text>

@@ -2,10 +2,12 @@ import { Colors } from '@/constants/Colors';
 import { useTheme } from '@/contexts/ThemeContext';
 import { databaseService } from '@/services/database';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
   Alert,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -21,7 +23,8 @@ export default function AddMedicationScreen() {
   
   const [name, setName] = useState('');
   const [dosage, setDosage] = useState('');
-  const [time, setTime] = useState('');
+  const [time, setTime] = useState(new Date());
+  const [showTimePicker, setShowTimePicker] = useState(false);
   const [selectedIcon, setSelectedIcon] = useState('💊');
   const [selectedColor, setSelectedColor] = useState('blue');
 
@@ -36,32 +39,39 @@ export default function AddMedicationScreen() {
   ];
 
   const handleSubmit = () => {
-    if (!name.trim() || !dosage.trim() || !time.trim()) {
+    if (!name.trim() || !dosage.trim()) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
 
     try {
+      // Format time as string in 12-hour format with AM/PM
+      const timeString = time.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+
       databaseService.addMedication({
         name: name.trim(),
         dosage: dosage.trim(),
-        time,
+        time: timeString,
         taken: false,
         color: selectedColor,
         icon: selectedIcon,
-      });
-
+      });      // Reset form
+      setName('');
+      setDosage('');
+      setTime(new Date());
+      setSelectedIcon('💊');
+      setSelectedColor('blue');
+      
+      // Show success message and navigate back to home
       Alert.alert('Success', 'Medication added successfully!', [
         {
           text: 'OK',
           onPress: () => {
-            // Reset form
-            setName('');
-            setDosage('');
-            setTime('');
-            setSelectedIcon('💊');
-            setSelectedColor('blue');            // Navigate back to home
-            router.push('/(tabs)');
+            // Navigate back to home tab
+            router.replace('/(tabs)');
           },
         },
       ]);
@@ -71,6 +81,15 @@ export default function AddMedicationScreen() {
     }
   };
 
+  const onTimeChange = (event: any, selectedTime?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowTimePicker(false);
+    }
+    
+    if (selectedTime) {
+      setTime(selectedTime);
+    }
+  };
   const styles = StyleSheet.create({
     container: {
       flex: 1,
@@ -79,6 +98,9 @@ export default function AddMedicationScreen() {
     content: {
       flex: 1,
       padding: 16,
+    },
+    contentContainer: {
+      paddingBottom: 100, // Add padding to the bottom to prevent content from being hidden behind the nav bar
     },
     header: {
       alignItems: 'center',
@@ -112,6 +134,20 @@ export default function AddMedicationScreen() {
       borderColor: colors.border,
       borderRadius: 8,
       padding: 16,
+      fontSize: 16,
+      color: colors.text,
+    },
+    timeButton: {
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 8,
+      padding: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    timeButtonText: {
       fontSize: 16,
       color: colors.text,
     },
@@ -189,7 +225,11 @@ export default function AddMedicationScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.content} 
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.header}>
           <Text style={styles.title}>Add Medication</Text>
           <Text style={styles.subtitle}>Enter your medication details</Text>
@@ -255,7 +295,6 @@ export default function AddMedicationScreen() {
               ))}
             </View>
           </View>
-
           <View style={styles.formGroup}>
             <Text style={styles.label}>Dosage</Text>
             <TextInput
@@ -266,18 +305,30 @@ export default function AddMedicationScreen() {
               placeholderTextColor={colors.textSecondary}
             />
           </View>
-
           <View style={styles.formGroup}>
             <Text style={styles.label}>Time</Text>
-            <TextInput
-              style={styles.input}
-              value={time}
-              onChangeText={setTime}
-              placeholder="e.g. 8:00 AM"
-              placeholderTextColor={colors.textSecondary}
-            />
+            <TouchableOpacity
+              style={styles.timeButton}
+              onPress={() => setShowTimePicker(true)}
+            >
+              <Text style={styles.timeButtonText}>
+                {time.toLocaleTimeString([], {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </Text>
+              <Ionicons name="time" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+            {showTimePicker && (
+              <DateTimePicker
+                value={time}
+                mode="time"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={onTimeChange}
+                style={{ width: '100%' }}
+              />
+            )}
           </View>
-
           <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
             <Ionicons name="add" size={20} color={colors.primaryForeground} />
             <Text style={styles.submitButtonText}>Add Medication</Text>
