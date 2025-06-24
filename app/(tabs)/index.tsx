@@ -1,3 +1,4 @@
+import { EditMedicationModal } from '@/components/EditMedicationModal';
 import { MedicationCard } from '@/components/MedicationCard';
 import { Colors } from '@/constants/Colors';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -14,6 +15,8 @@ export default function HomeScreen() {
   const colors = isDark ? Colors.dark : Colors.light;
   const [medications, setMedications] = useState<Medication[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [currentMedication, setCurrentMedication] = useState<Medication | null>(null);
 
   const loadMedications = () => {
     try {
@@ -55,19 +58,8 @@ export default function HomeScreen() {
   };
 
   const handleEditMedication = (medication: Medication) => {
-    // Navigation would typically go here to an edit screen
-    // For now, we'll use a simple alert to demonstrate the functionality
-    Alert.alert(
-      "Edit Medication",
-      `You would now edit ${medication.name}`,
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "OK", 
-          onPress: () => console.log("Edit medication", medication.id) 
-        }
-      ]
-    );
+    setCurrentMedication(medication);
+    setEditModalVisible(true);
   };
 
   const handleDeleteMedication = (medicationId: string, medicationName: string) => {
@@ -90,6 +82,20 @@ export default function HomeScreen() {
         }
       ]
     );
+  };
+
+  const handleSaveMedication = (updatedData: Partial<Medication>) => {
+    if (currentMedication) {
+      try {
+        databaseService.updateMedication(currentMedication.id, updatedData);
+        loadMedications(); // Refresh the list
+        setEditModalVisible(false);
+        setCurrentMedication(null);
+      } catch (error) {
+        console.error('Error updating medication:', error);
+        Alert.alert('Error', 'Failed to update medication. Please try again.');
+      }
+    }
   };
 
   // Helper function to calculate time difference in minutes
@@ -261,6 +267,17 @@ export default function HomeScreen() {
           )}
         </View>
       </ScrollView>
+      
+      {/* Edit Medication Modal */}
+      <EditMedicationModal
+        visible={editModalVisible}
+        onClose={() => {
+          setEditModalVisible(false);
+          setCurrentMedication(null);
+        }}
+        onSave={handleSaveMedication}
+        medication={currentMedication}
+      />
     </SafeAreaView>
   );
 }
