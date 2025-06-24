@@ -2,7 +2,7 @@ import { Colors } from '@/constants/Colors';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Alert,
     Modal,
@@ -14,6 +14,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { notificationService } from '@/services/notificationService';
 
 // Days of the week for frequency selection
 const DAYS_OF_WEEK = [
@@ -34,16 +35,24 @@ const FREQUENCY_OPTIONS = [
   { value: 'custom', label: 'Custom Days' },
 ];
 
+// Alarm type options
+const ALARM_TYPE_OPTIONS = [
+  { value: 'notification', label: 'Notification', icon: 'notifications' },
+  { value: 'alarm', label: 'Alarm (Strong Alert)', icon: 'alarm' },
+];
+
 interface AddReminderModalProps {
   visible: boolean;
   onClose: () => void;
   onAddReminder: (reminder: {
+    id: string;
     time: string;
     label: string;
     active: boolean;
     frequency: 'daily' | 'weekly' | 'weekdays' | 'custom';
     customDays?: string[];
     until?: string;
+    alarmType: 'notification' | 'alarm';
   }) => void;
 }
 
@@ -56,15 +65,39 @@ export default function AddReminderModal({
   const colors = isDark ? Colors.dark : Colors.light;
   const [label, setLabel] = useState('');
   const [time, setTime] = useState(new Date());
-  const [showTimePicker, setShowTimePicker] = useState(false);
-  const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'weekdays' | 'custom'>('daily');
+  const [showTimePicker, setShowTimePicker] = useState(false);  const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'weekdays' | 'custom'>('daily');
   const [customDays, setCustomDays] = useState<string[]>([]);
   const [untilDate, setUntilDate] = useState<Date | null>(null);
   const [showUntilDatePicker, setShowUntilDatePicker] = useState(false);
+  const [alarmType, setAlarmType] = useState<'notification' | 'alarm'>('notification');
+  const [hasPermission, setHasPermission] = useState(false);
 
-  const handleSubmit = () => {
+  // Request notification permissions when modal opens
+  useEffect(() => {
+    if (visible) {
+      checkAndRequestPermissions();
+    }
+  }, [visible]);
+
+  const checkAndRequestPermissions = async () => {
+    const permission = await notificationService.requestPermissions();
+    setHasPermission(permission);
+    if (!permission) {
+      Alert.alert(
+        'Permission Required',
+        'Notification permissions are required to send medication reminders. Please enable notifications in your device settings.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+  const handleSubmit = async () => {
     if (!label.trim()) {
       Alert.alert('Error', 'Please enter a reminder label');
+      return;
+    }
+
+    if (!hasPermission) {
+      Alert.alert('Error', 'Notification permissions are required to set reminders');
       return;
     }
 
@@ -73,30 +106,50 @@ export default function AddReminderModal({
       minute: '2-digit',
     });
 
-    onAddReminder({
+    const reminderId = `reminder_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    const reminderData = {
+      id: reminderId,
       time: timeString,
       label: label.trim(),
       active: true,
       frequency,
       customDays: frequency === 'custom' ? customDays : undefined,
       until: untilDate ? untilDate.toISOString() : undefined,
+      alarmType,
+    };    // Schedule the notification
+    const scheduled = await notificationService.scheduleReminder({
+      id: reminderId,
+      time: timeString,
+      label: label.trim(),
+      frequency,
+      customDays: frequency === 'custom' ? customDays : undefined,
+      until: untilDate ? untilDate.toISOString() : undefined,
+      alarmType,
     });
 
-    // Reset form
-    setLabel('');
-    setTime(new Date());
-    setFrequency('daily');
-    setCustomDays([]);
-    setUntilDate(null);
-    onClose();
+    if (scheduled) {
+      onAddReminder(reminderData);
+      
+      // Reset form
+      setLabel('');
+      setTime(new Date());
+      setFrequency('daily');
+      setCustomDays([]);
+      setUntilDate(null);
+      setAlarmType('notification');
+      onClose();
+    } else {
+      Alert.alert('Error', 'Failed to schedule notification. Please try again.');
+    }
   };
-
   const handleCancel = () => {
     setLabel('');
     setTime(new Date());
     setFrequency('daily');
     setCustomDays([]);
     setUntilDate(null);
+    setAlarmType('notification');
     onClose();
   };
 
@@ -272,6 +325,58 @@ export default function AddReminderModal({
       color: colors.primary,
       fontWeight: '600',
     },
+    // Permission warning styles
+    permissionWarning: {
+      backgroundColor: `${colors.warning || '#ff9500'}20`,
+      borderColor: colors.warning || '#ff9500',
+      borderWidth: 1,
+      borderRadius: 8,
+      padding: 12,
+    },
+    permissionContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    permissionText: {
+      fontSize: 14,
+      marginLeft: 8,
+      flex: 1,
+    },
+    permissionButton: {
+      backgroundColor: colors.primary,
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+      borderRadius: 6,
+      alignSelf: 'flex-start',
+    },
+    permissionButtonText: {
+      color: colors.primaryForeground,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    // Test button styles (development only)
+    testButtons: {
+      marginTop: 16,
+      paddingTop: 16,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    testButtonRow: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    testButton: {
+      flex: 1,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderRadius: 6,
+      alignItems: 'center',
+    },
+    testButtonText: {
+      fontSize: 12,
+      fontWeight: '600',
+    },
   });
 
   return (
@@ -303,6 +408,23 @@ export default function AddReminderModal({
                 numberOfLines={2}
               />
             </View>
+
+            {!hasPermission && (
+              <View style={[styles.formGroup, styles.permissionWarning]}>
+                <View style={styles.permissionContent}>
+                  <Ionicons name="warning" size={20} color={colors.warning || '#ff9500'} />
+                  <Text style={[styles.permissionText, { color: colors.warning || '#ff9500' }]}>
+                    Notification permissions required for reminders to work
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.permissionButton}
+                  onPress={checkAndRequestPermissions}
+                >
+                  <Text style={styles.permissionButtonText}>Request Permission</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Time</Text>
@@ -409,6 +531,38 @@ export default function AddReminderModal({
               />
             )}
 
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Alert Type</Text>
+              {ALARM_TYPE_OPTIONS.map((option) => (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[
+                    styles.frequencyOption,
+                    alarmType === option.value && styles.selectedFrequencyOption,
+                  ]}
+                  onPress={() => setAlarmType(option.value as any)}
+                >
+                  <Ionicons
+                    name={alarmType === option.value ? 'radio-button-on' : 'radio-button-off'}
+                    size={20}
+                    color={alarmType === option.value ? colors.primary : colors.textSecondary}
+                  />
+                  <Ionicons
+                    name={option.icon as any}
+                    size={20}
+                    color={alarmType === option.value ? colors.primary : colors.textSecondary}
+                    style={{ marginLeft: 8 }}
+                  />
+                  <Text style={[
+                    styles.frequencyText,
+                    alarmType === option.value && styles.selectedFrequencyText,
+                  ]}>
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
             <View style={styles.buttons}>
               <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={handleCancel}>
                 <Text style={styles.cancelButtonText}>Cancel</Text>
@@ -417,6 +571,27 @@ export default function AddReminderModal({
                 <Text style={styles.addButtonText}>Add Reminder</Text>
               </TouchableOpacity>
             </View>
+
+            {/* Development/Testing buttons */}
+            {__DEV__ && (
+              <View style={styles.testButtons}>
+                <Text style={[styles.label, { fontSize: 14, marginBottom: 8 }]}>Test Notifications:</Text>
+                <View style={styles.testButtonRow}>
+                  <TouchableOpacity
+                    style={[styles.testButton, { backgroundColor: colors.muted }]}
+                    onPress={() => notificationService.sendTestNotification('notification')}
+                  >
+                    <Text style={[styles.testButtonText, { color: colors.text }]}>Test Normal</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.testButton, { backgroundColor: '#ff4444' }]}
+                    onPress={() => notificationService.sendTestNotification('alarm')}
+                  >
+                    <Text style={[styles.testButtonText, { color: '#fff' }]}>Test Alarm</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
           </ScrollView>
         </View>
       </View>
