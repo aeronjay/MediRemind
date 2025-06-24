@@ -10,26 +10,40 @@ import { Platform } from 'react-native';
  * - Scheduled recurring notifications (daily, weekly, weekdays, custom days)
  * - Two types of alerts: Normal reminders and High-priority alarms
  * - Different notification channels for Android (reminders vs alarms)
+ * - Alarm notifications use default system ringtone/sound for prominence
  * - Snooze functionality
  * - Background notification handling
  * - Test notifications for development
  * 
+ * Alarm Behavior:
+ * - Alarms use the 'medication-alarms' channel with MAX importance
+ * - Default system sound/ringtone is used for alarm notifications
+ * - Enhanced vibration patterns for alarms
+ * - Sticky notifications that persist until dismissed
+ * - Maximum priority for immediate user attention
+ * 
  * Usage:
  * - Call requestPermissions() before scheduling notifications
  * - Use scheduleReminder() to set up recurring medication reminders
- * - Supports alarm-type notifications for urgent medication alerts
+ * - Set alarmType: 'alarm' for urgent medication alerts that use ringtone
  * - Notifications work even when the app is closed or in background
  */
 
 // Configure notification behavior
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
+  handleNotification: async (notification) => {
+    // Check if this is an alarm notification based on category or title
+    const isAlarm = notification.request.content.categoryIdentifier?.includes('alarm') ||
+                   notification.request.content.title?.includes('ALARM');
+    
+    return {
+      shouldShowAlert: true,
+      shouldPlaySound: true, // Always play sound, especially important for alarms
+      shouldSetBadge: false,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    };
+  },
 });
 
 export interface ReminderNotification {
@@ -75,15 +89,13 @@ class NotificationService {
           lightColor: '#FF231F7C',
           sound: 'default',
           enableVibrate: true,
-        });
-
-        // High-priority alarm notifications
+        });        // High-priority alarm notifications
         await Notifications.setNotificationChannelAsync('medication-alarms', {
           name: 'Medication Alarms',
           importance: Notifications.AndroidImportance.MAX,
           vibrationPattern: [0, 500, 200, 500, 200, 500],
           lightColor: '#FF0000',
-          sound: 'default',
+          sound: 'default', // Will use default ringtone sound
           enableVibrate: true,
           enableLights: true,
         });
@@ -314,7 +326,6 @@ class NotificationService {
   addNotificationReceivedListener(listener: (notification: Notifications.Notification) => void) {
     return Notifications.addNotificationReceivedListener(listener);
   }
-
   // Test notification (for development/testing purposes)
   async sendTestNotification(type: 'notification' | 'alarm' = 'notification'): Promise<void> {
     const hasPermission = await this.requestPermissions();
@@ -323,25 +334,33 @@ class NotificationService {
       return;
     }
 
+    const content: Notifications.NotificationContentInput = {
+      title: type === 'alarm' ? '🚨 TEST ALARM' : '💊 Test Notification',
+      body: 'This is a test notification to check if everything is working!',
+      sound: 'default', // Uses default system sound/ringtone
+      priority: type === 'alarm' 
+        ? Notifications.AndroidNotificationPriority.MAX 
+        : Notifications.AndroidNotificationPriority.HIGH,
+      vibrate: type === 'alarm' ? [0, 500, 200, 500, 200, 500] : [0, 250, 250, 250],
+      categoryIdentifier: type === 'alarm' ? 'medication-alarm' : 'medication-reminder',
+      sticky: type === 'alarm',
+    };
+
+    // Add Android-specific channel for proper alarm sound
+    if (Platform.OS === 'android') {
+      (content as any).android = {
+        channelId: type === 'alarm' ? 'medication-alarms' : 'medication-reminders',
+      };
+    }
+
     await Notifications.scheduleNotificationAsync({
-      content: {
-        title: type === 'alarm' ? '🚨 TEST ALARM' : '💊 Test Notification',
-        body: 'This is a test notification to check if everything is working!',
-        sound: 'default',
-        priority: type === 'alarm' 
-          ? Notifications.AndroidNotificationPriority.MAX 
-          : Notifications.AndroidNotificationPriority.HIGH,
-        vibrate: type === 'alarm' ? [0, 500, 200, 500, 200, 500] : [0, 250, 250, 250],
-        categoryIdentifier: type === 'alarm' ? 'medication-alarm' : 'medication-reminder',
-        sticky: type === 'alarm',
-      },
+      content,
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
         seconds: 2,
       },
     });
   }
-
   // Schedule a snooze notification
   async scheduleSnoozeNotification(
     originalTitle: string,
@@ -356,18 +375,27 @@ class NotificationService {
     }
 
     try {
+      const content: Notifications.NotificationContentInput = {
+        title: `⏰ ${originalTitle}`,
+        body: `${originalBody} (Snoozed for ${minutes} minutes)`,
+        sound: 'default', // Uses default system sound/ringtone
+        priority: isAlarm 
+          ? Notifications.AndroidNotificationPriority.MAX 
+          : Notifications.AndroidNotificationPriority.HIGH,
+        vibrate: isAlarm ? [0, 500, 200, 500, 200, 500] : [0, 250, 250, 250],
+        categoryIdentifier: isAlarm ? 'medication-alarm' : 'medication-reminder',
+        sticky: isAlarm,
+      };
+
+      // Add Android-specific channel for proper alarm sound
+      if (Platform.OS === 'android') {
+        (content as any).android = {
+          channelId: isAlarm ? 'medication-alarms' : 'medication-reminders',
+        };
+      }
+
       const notificationId = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: `⏰ ${originalTitle}`,
-          body: `${originalBody} (Snoozed for ${minutes} minutes)`,
-          sound: 'default',
-          priority: isAlarm 
-            ? Notifications.AndroidNotificationPriority.MAX 
-            : Notifications.AndroidNotificationPriority.HIGH,
-          vibrate: isAlarm ? [0, 500, 200, 500, 200, 500] : [0, 250, 250, 250],
-          categoryIdentifier: isAlarm ? 'medication-alarm' : 'medication-reminder',
-          sticky: isAlarm,
-        },
+        content,
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
           seconds: minutes * 60,
@@ -379,13 +407,13 @@ class NotificationService {
       console.error('Error scheduling snooze notification:', error);
       return null;
     }
-  }  private getNotificationContent(reminder: ReminderNotification): Notifications.NotificationContentInput {
+  }private getNotificationContent(reminder: ReminderNotification): Notifications.NotificationContentInput {
     const isAlarm = reminder.alarmType === 'alarm';
     
-    return {
+    const baseContent: Notifications.NotificationContentInput = {
       title: isAlarm ? '🚨 MEDICATION ALARM' : '💊 Medication Reminder',
       body: reminder.label,
-      sound: 'default',
+      sound: 'default', // Default system sound/ringtone
       priority: isAlarm 
         ? Notifications.AndroidNotificationPriority.MAX 
         : Notifications.AndroidNotificationPriority.HIGH,
@@ -393,6 +421,15 @@ class NotificationService {
       categoryIdentifier: isAlarm ? 'medication-alarm' : 'medication-reminder',
       sticky: isAlarm,
     };
+
+    // For Android, use the appropriate notification channel for proper alarm sound
+    if (Platform.OS === 'android') {
+      (baseContent as any).android = {
+        channelId: isAlarm ? 'medication-alarms' : 'medication-reminders',
+      };
+    }
+
+    return baseContent;
   }
 }
 
