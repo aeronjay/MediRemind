@@ -9,8 +9,7 @@ class DatabaseService {
     this.initDatabase();
   }
 
-  private initDatabase() {
-    // Create medications table
+  private initDatabase() {    // Create medications table
     this.db.execSync(`
       CREATE TABLE IF NOT EXISTS medications (
         id TEXT PRIMARY KEY,
@@ -20,6 +19,9 @@ class DatabaseService {
         taken INTEGER DEFAULT 0,
         color TEXT NOT NULL,
         icon TEXT NOT NULL,
+        frequency TEXT NOT NULL DEFAULT 'daily',
+        custom_days TEXT,
+        until TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -60,8 +62,7 @@ class DatabaseService {
     // Check if medications table is empty
     const medicationCount = this.db.getFirstSync('SELECT COUNT(*) as count FROM medications') as { count: number };
     
-    if (medicationCount.count === 0) {
-      // Insert default medications
+    if (medicationCount.count === 0) {      // Insert default medications
       const defaultMedications = [
         {
           id: '1',
@@ -71,6 +72,9 @@ class DatabaseService {
           taken: 0,
           color: 'blue',
           icon: '💊',
+          frequency: 'daily',
+          custom_days: null,
+          until: null,
           created_at: now,
           updated_at: now
         },
@@ -82,6 +86,9 @@ class DatabaseService {
           taken: 1,
           color: 'green',
           icon: '💊',
+          frequency: 'daily',
+          custom_days: null,
+          until: null,
           created_at: now,
           updated_at: now
         },
@@ -93,6 +100,9 @@ class DatabaseService {
           taken: 0,
           color: 'yellow',
           icon: '🌞',
+          frequency: 'weekdays',
+          custom_days: null,
+          until: null,
           created_at: now,
           updated_at: now
         }
@@ -100,8 +110,8 @@ class DatabaseService {
 
       defaultMedications.forEach(med => {
         this.db.runSync(
-          'INSERT INTO medications (id, name, dosage, time, taken, color, icon, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-          [med.id, med.name, med.dosage, med.time, med.taken, med.color, med.icon, med.created_at, med.updated_at]
+          'INSERT INTO medications (id, name, dosage, time, taken, color, icon, frequency, custom_days, until, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [med.id, med.name, med.dosage, med.time, med.taken, med.color, med.icon, med.frequency, med.custom_days, med.until, med.created_at, med.updated_at]
         );
       });
 
@@ -185,8 +195,7 @@ class DatabaseService {
           [entry.id, entry.date, entry.feeling, entry.notes, entry.medications, entry.created_at, entry.updated_at]
         );
       });
-    }
-  }
+    }  }
 
   // Medications methods
   getMedications(): Medication[] {
@@ -199,18 +208,33 @@ class DatabaseService {
       taken: Boolean(row.taken),
       color: row.color,
       icon: row.icon,
+      frequency: row.frequency || 'daily',
+      customDays: row.custom_days ? JSON.parse(row.custom_days) : [],
+      until: row.until || undefined,
       createdAt: row.created_at,
       updatedAt: row.updated_at
     }));
-  }
-
-  addMedication(medication: Omit<Medication, 'id' | 'createdAt' | 'updatedAt'>): string {
+  }  addMedication(medication: Omit<Medication, 'id' | 'createdAt' | 'updatedAt'>): string {
     const id = Date.now().toString();
     const now = new Date().toISOString();
+    const customDaysJson = medication.customDays ? JSON.stringify(medication.customDays) : null;
     
     this.db.runSync(
-      'INSERT INTO medications (id, name, dosage, time, taken, color, icon, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [id, medication.name, medication.dosage, medication.time, medication.taken ? 1 : 0, medication.color, medication.icon, now, now]
+      'INSERT INTO medications (id, name, dosage, time, taken, color, icon, frequency, custom_days, until, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [
+        id, 
+        medication.name, 
+        medication.dosage, 
+        medication.time, 
+        medication.taken ? 1 : 0, 
+        medication.color, 
+        medication.icon, 
+        medication.frequency || 'daily',
+        customDaysJson,
+        medication.until || null,
+        now, 
+        now
+      ]
     );
     
     return id;
@@ -223,7 +247,6 @@ class DatabaseService {
       [taken ? 1 : 0, now, id]
     );
   }
-
   updateMedication(id: string, medication: Partial<Omit<Medication, 'id' | 'createdAt' | 'updatedAt'>>): void {
     const now = new Date().toISOString();
     const updates: string[] = [];
@@ -253,6 +276,18 @@ class DatabaseService {
     if (medication.icon !== undefined) {
       updates.push('icon = ?');
       values.push(medication.icon);
+    }
+    if (medication.frequency !== undefined) {
+      updates.push('frequency = ?');
+      values.push(medication.frequency);
+    }
+    if (medication.customDays !== undefined) {
+      updates.push('custom_days = ?');
+      values.push(medication.customDays.length > 0 ? JSON.stringify(medication.customDays) : null);
+    }
+    if (medication.until !== undefined) {
+      updates.push('until = ?');
+      values.push(medication.until || null);
     }
 
     // Add updated_at timestamp

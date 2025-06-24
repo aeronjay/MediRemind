@@ -6,6 +6,9 @@ export type Medication = {
   taken: boolean;
   color: string;
   icon: string;
+  frequency: 'daily' | 'weekly' | 'weekdays' | 'custom';
+  customDays?: string[]; // For custom days selection (e.g., ['Monday', 'Thursday'])
+  until?: string; // Optional end date for the medication
   createdAt: string;
   updatedAt: string;
 };

@@ -17,6 +17,17 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+// Days of the week for frequency selection
+const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+// Frequency options
+const FREQUENCY_OPTIONS = [
+  { value: 'daily', label: 'Daily' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'weekdays', label: 'Weekdays' },
+  { value: 'custom', label: 'Custom Days' },
+];
+
 export default function AddMedicationScreen() {
   const { isDark } = useTheme();
   const colors = isDark ? Colors.dark : Colors.light;
@@ -27,6 +38,10 @@ export default function AddMedicationScreen() {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [selectedIcon, setSelectedIcon] = useState('💊');
   const [selectedColor, setSelectedColor] = useState('blue');
+  const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'weekdays' | 'custom'>('daily');
+  const [customDays, setCustomDays] = useState<string[]>([]);
+  const [untilDate, setUntilDate] = useState<Date | null>(null);
+  const [showUntilDatePicker, setShowUntilDatePicker] = useState(false);
 
   const medicationIcons = ['💊', '💉', '🌡️', '🩺', '🌞', '🌙', '❤️', '🫁', '🧠'];
   const medicationColors = [
@@ -49,21 +64,27 @@ export default function AddMedicationScreen() {
       const timeString = time.toLocaleTimeString([], {
         hour: '2-digit',
         minute: '2-digit',
-      });
-
-      databaseService.addMedication({
+      });      databaseService.addMedication({
         name: name.trim(),
         dosage: dosage.trim(),
         time: timeString,
         taken: false,
         color: selectedColor,
         icon: selectedIcon,
-      });      // Reset form
+        frequency,
+        customDays: frequency === 'custom' ? customDays : undefined,
+        until: untilDate ? untilDate.toISOString() : undefined,
+      });
+      
+      // Reset form
       setName('');
       setDosage('');
       setTime(new Date());
       setSelectedIcon('💊');
       setSelectedColor('blue');
+      setFrequency('daily');
+      setCustomDays([]);
+      setUntilDate(null);
       
       // Show success message and navigate back to home
       Alert.alert('Success', 'Medication added successfully!', [
@@ -90,6 +111,17 @@ export default function AddMedicationScreen() {
       setTime(selectedTime);
     }
   };
+
+  const onUntilDateChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowUntilDatePicker(false);
+    }
+    
+    if (selectedDate) {
+      setUntilDate(selectedDate);
+    }
+  };
+
   const styles = StyleSheet.create({
     container: {
       flex: 1,
@@ -205,6 +237,63 @@ export default function AddMedicationScreen() {
     },
     colorTextUnselected: {
       color: colors.text,
+    },
+    // Frequency options
+    frequencyGrid: {
+      marginTop: 8,
+      gap: 8,
+    },
+    frequencyButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 12,
+      borderRadius: 8,
+      marginVertical: 4,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.card,
+    },
+    frequencyButtonSelected: {
+      borderColor: colors.primary,
+      backgroundColor: `${colors.primary}20`,
+    },
+    frequencyText: {
+      fontSize: 16,
+      color: colors.text,
+      marginLeft: 8,
+    },
+    frequencyTextSelected: {
+      color: colors.primary,
+      fontWeight: '600',
+    },
+    // Custom days selection
+    customDaysGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      marginTop: 8,
+      gap: 8,
+    },
+    dayButton: {
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.card,
+      marginRight: 8,
+      marginBottom: 8,
+    },
+    dayButtonSelected: {
+      borderColor: colors.primary,
+      backgroundColor: `${colors.primary}20`,
+    },
+    dayText: {
+      fontSize: 14,
+      color: colors.text,
+    },
+    dayTextSelected: {
+      color: colors.primary,
+      fontWeight: '600',
     },
     submitButton: {
       backgroundColor: colors.primary,
@@ -329,6 +418,89 @@ export default function AddMedicationScreen() {
               />
             )}
           </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Frequency</Text>
+            <View style={styles.frequencyGrid}>
+              {FREQUENCY_OPTIONS.map((option) => (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[
+                    styles.frequencyButton,
+                    frequency === option.value && styles.frequencyButtonSelected,
+                  ]}
+                  onPress={() => setFrequency(option.value as any)}
+                >
+                  <Ionicons
+                    name={frequency === option.value ? 'radio-button-on' : 'radio-button-off'}
+                    size={20}
+                    color={frequency === option.value ? colors.primary : colors.textSecondary}
+                  />
+                  <Text style={[
+                    styles.frequencyText,
+                    frequency === option.value && styles.frequencyTextSelected,
+                  ]}>
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {frequency === 'custom' && (
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Choose Days</Text>
+              <View style={styles.customDaysGrid}>
+                {DAYS_OF_WEEK.map((day) => (
+                  <TouchableOpacity
+                    key={day}
+                    style={[
+                      styles.dayButton,
+                      customDays.includes(day) && styles.dayButtonSelected,
+                    ]}
+                    onPress={() => {
+                      if (customDays.includes(day)) {
+                        setCustomDays(customDays.filter((d) => d !== day));
+                      } else {
+                        setCustomDays([...customDays, day]);
+                      }
+                    }}
+                  >
+                    <Text style={[
+                      styles.dayText,
+                      customDays.includes(day) && styles.dayTextSelected,
+                    ]}>
+                      {day.substring(0, 3)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Until (Optional)</Text>
+            <TouchableOpacity
+              style={styles.timeButton}
+              onPress={() => setShowUntilDatePicker(true)}
+            >
+              <Text style={styles.timeButtonText}>
+                {untilDate ? untilDate.toLocaleDateString() : 'No end date'}
+              </Text>
+              <Ionicons name="calendar" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+            {showUntilDatePicker && (
+              <DateTimePicker
+                value={untilDate || new Date()}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={onUntilDateChange}
+                minimumDate={new Date()}
+                style={{ width: '100%' }}
+              />
+            )}
+          </View>
+
           <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
             <Ionicons name="add" size={20} color={colors.primaryForeground} />
             <Text style={styles.submitButtonText}>Add Medication</Text>

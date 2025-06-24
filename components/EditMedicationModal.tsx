@@ -22,6 +22,17 @@ const MEDICATION_COLORS = ['blue', 'green', 'pink', 'purple', 'orange', 'yellow'
 // Emoji icons for medications
 const MEDICATION_ICONS = ['💊', '💉', '🌡️', '🧠', '❤️', '🫁', '🦷', '👁️', '🌞'];
 
+// Days of the week for frequency selection
+const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+// Frequency options
+const FREQUENCY_OPTIONS = [
+  { value: 'daily', label: 'Daily' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'weekdays', label: 'Weekdays' },
+  { value: 'custom', label: 'Custom Days' },
+];
+
 interface EditMedicationModalProps {
   visible: boolean;
   onClose: () => void;
@@ -44,6 +55,12 @@ export const EditMedicationModal: React.FC<EditMedicationModalProps> = ({
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [selectedColor, setSelectedColor] = useState('blue');
   const [selectedIcon, setSelectedIcon] = useState('💊');
+  const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'weekdays' | 'custom'>('daily');
+  const [customDays, setCustomDays] = useState<string[]>([]);
+  const [untilDate, setUntilDate] = useState<Date | null>(null);
+  const [showUntilDatePicker, setShowUntilDatePicker] = useState(false);
+  const [untilDateString, setUntilDateString] = useState('');
+
   // Initialize form with medication data when it changes
   useEffect(() => {
     if (medication) {
@@ -75,26 +92,54 @@ export const EditMedicationModal: React.FC<EditMedicationModalProps> = ({
       
       setSelectedColor(medication.color);
       setSelectedIcon(medication.icon);
+      
+      // Set frequency properties if they exist
+      if (medication.frequency) {
+        setFrequency(medication.frequency);
+        if (medication.customDays) {
+          setCustomDays(medication.customDays);
+        }
+      }
+      
+      // Set until date if it exists
+      if (medication.until) {
+        try {
+          const untilDateObj = new Date(medication.until);
+          setUntilDate(untilDateObj);
+          setUntilDateString(untilDateObj.toLocaleDateString());
+        } catch (e) {
+          console.error('Error parsing until date:', e);
+        }
+      }
     }
-  }, [medication]);
-  const handleSave = () => {
+  }, [medication]);  const handleSave = () => {
     if (!name.trim() || !dosage.trim() || !timeString) {
       // Simple validation - could be enhanced
       return;
     }
 
-    const updatedMedication = {
+    const updatedMedication: Partial<Medication> = {
       name,
       dosage,
       time: timeString,
       color: selectedColor,
       icon: selectedIcon,
+      frequency,
     };
+
+    // Add custom days if frequency is custom
+    if (frequency === 'custom' && customDays.length > 0) {
+      updatedMedication.customDays = customDays;
+    }
+
+    // Add until date if it exists
+    if (untilDate) {
+      updatedMedication.until = untilDate.toISOString();
+    }
 
     onSave(updatedMedication);
     onClose();
   };
-
   const onTimeChange = (event: any, selectedTime?: Date) => {
     if (Platform.OS === 'android') {
       setShowTimePicker(false);
@@ -113,6 +158,19 @@ export const EditMedicationModal: React.FC<EditMedicationModalProps> = ({
     }
   };
 
+  const onUntilDateChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowUntilDatePicker(false);
+    }
+    
+    if (selectedDate) {
+      setUntilDate(selectedDate);
+      
+      // Format date for display
+      const formattedDate = selectedDate.toLocaleDateString();
+      setUntilDateString(formattedDate);
+    }
+  };
   const styles = StyleSheet.create({
     centeredView: {
       flex: 1,
@@ -156,7 +214,8 @@ export const EditMedicationModal: React.FC<EditMedicationModalProps> = ({
       fontSize: 16,
       marginBottom: 8,
       color: colors.text,
-    },    input: {
+    },    
+    input: {
       backgroundColor: colors.card,
       padding: 12,
       borderRadius: 8,
@@ -198,6 +257,48 @@ export const EditMedicationModal: React.FC<EditMedicationModalProps> = ({
     },
     iconText: {
       fontSize: 20,
+    },
+    frequencyContainer: {
+      marginBottom: 16,
+    },
+    frequencyOption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 10,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderRadius: 8,
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    frequencyText: {
+      fontSize: 16,
+      marginLeft: 10,
+      color: colors.text,
+    },
+    customDaysContainer: {
+      marginBottom: 16,
+    },
+    customDaysGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      marginTop: 8,
+      gap: 8,
+    },
+    dayOption: {
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderRadius: 8,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 1,
+      backgroundColor: colors.card,
+      marginBottom: 8,
+    },
+    dayText: {
+      fontSize: 14,
+      color: colors.text,
     },
     buttonsContainer: {
       flexDirection: 'row',
@@ -293,6 +394,94 @@ export const EditMedicationModal: React.FC<EditMedicationModalProps> = ({
               </View>
 
               <View style={styles.inputContainer}>
+                <Text style={styles.label}>Frequency</Text>
+                <View>
+                  {FREQUENCY_OPTIONS.map((option) => (
+                    <TouchableOpacity
+                      key={option.value}
+                      style={[
+                        styles.frequencyOption,
+                        {
+                          borderColor: frequency === option.value ? colors.primary : colors.border,
+                          backgroundColor: frequency === option.value ? `${option.value === 'daily' ? '#1a365d' : option.value === 'weekly' ? '#1c4532' : option.value === 'weekdays' ? '#702459' : '#44337a'}30` : colors.card,
+                        },
+                      ]}
+                      onPress={() => setFrequency(option.value as any)}
+                    >
+                      <Ionicons
+                        name={frequency === option.value ? 'radio-button-on' : 'radio-button-off'}
+                        size={20}
+                        color={frequency === option.value ? colors.primary : colors.textSecondary}
+                      />
+                      <Text style={styles.frequencyText}>{option.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {frequency === 'custom' && (
+                <View style={styles.customDaysContainer}>
+                  <Text style={styles.label}>Choose Days</Text>
+                  <View style={styles.customDaysGrid}>
+                    {DAYS_OF_WEEK.map((day) => {
+                      const isSelected = customDays.includes(day);
+                      return (
+                        <TouchableOpacity
+                          key={day}
+                          style={[
+                            styles.dayOption,
+                            {
+                              borderColor: isSelected ? colors.primary : colors.border,
+                              backgroundColor: isSelected
+                                ? `${colors.primary}30`
+                                : colors.card,
+                            },
+                          ]}
+                          onPress={() => {
+                            if (isSelected) {
+                              setCustomDays(customDays.filter((d) => d !== day));
+                            } else {
+                              setCustomDays([...customDays, day]);
+                            }
+                          }}
+                        >
+                          <Text
+                            style={[
+                              styles.dayText,
+                              { color: isSelected ? colors.primary : colors.text },
+                            ]}
+                          >
+                            {day.substring(0, 3)}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+              )}
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Until (Optional)</Text>
+                <TouchableOpacity
+                  style={styles.input}
+                  onPress={() => setShowUntilDatePicker(true)}
+                >
+                  <Text style={{ color: colors.text }}>
+                    {untilDateString || 'No end date'}
+                  </Text>
+                </TouchableOpacity>
+                {showUntilDatePicker && (
+                  <DateTimePicker
+                    value={untilDate || new Date()}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    onChange={onUntilDateChange}
+                    minimumDate={new Date()}
+                  />
+                )}
+              </View>
+
+              <View style={styles.inputContainer}>
                 <Text style={styles.label}>Color</Text>
                 <View style={styles.colorGrid}>
                   {MEDICATION_COLORS.map((color) => {
@@ -339,6 +528,102 @@ export const EditMedicationModal: React.FC<EditMedicationModalProps> = ({
                     );
                   })}
                 </View>
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Frequency</Text>
+                <View style={styles.frequencyContainer}>
+                  {FREQUENCY_OPTIONS.map((option) => {
+                    const isSelected = option.value === frequency;
+                    return (
+                      <TouchableOpacity
+                        key={option.value}
+                        style={[
+                          styles.frequencyOption,
+                          isSelected && { backgroundColor: colors.primary },
+                        ]}
+                        onPress={() => setFrequency(option.value as any)}
+                      >
+                        <Text
+                          style={[
+                            styles.frequencyText,
+                            isSelected && { color: '#fff' },
+                          ]}
+                        >
+                          {option.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {frequency === 'custom' && (
+                <View style={styles.customDaysContainer}>
+                  <Text style={styles.label}>Custom Days</Text>
+                  <View style={styles.customDaysGrid}>
+                    {DAYS_OF_WEEK.map((day) => {
+                      const isSelected = customDays.includes(day);
+                      return (
+                        <TouchableOpacity
+                          key={day}
+                          style={[
+                            styles.dayOption,
+                            isSelected && { backgroundColor: colors.primary },
+                          ]}
+                          onPress={() => {
+                            if (isSelected) {
+                              setCustomDays(customDays.filter((d) => d !== day));
+                            } else {
+                              setCustomDays([...customDays, day]);
+                            }
+                          }}
+                        >
+                          <Text
+                            style={[
+                              styles.dayText,
+                              isSelected && { color: '#fff' },
+                            ]}
+                          >
+                            {day}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+              )}
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Until</Text>
+                <TouchableOpacity
+                  style={styles.input}
+                  onPress={() => setShowUntilDatePicker(true)}
+                >
+                  <Text style={{ color: colors.text }}>
+                    {untilDateString || 'Select an until date'}
+                  </Text>
+                </TouchableOpacity>
+                {showUntilDatePicker && (
+                  <DateTimePicker
+                    value={untilDate || new Date()}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    onChange={(event, selectedDate) => {
+                      if (Platform.OS === 'android') {
+                        setShowUntilDatePicker(false);
+                      }
+                      
+                      if (selectedDate) {
+                        setUntilDate(selectedDate);
+                        
+                        // Format date for display
+                        const formattedDate = selectedDate.toLocaleDateString();
+                        setUntilDateString(formattedDate);
+                      }
+                    }}
+                  />
+                )}
               </View>
 
               <View style={styles.buttonsContainer}>
